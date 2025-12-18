@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mon Rucher Pro - Interface Épurée</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f1c40f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+</head>
+<body>
+
+    <header>
+        <h1>🐝 <span class="titre-miel" style="color: #8B6508; font-weight: 900; text-transform: uppercase;">Mon Rucher</span> 🐝</h1>
+        <div class="btn-container">
+    <button class="btn-add" onclick="ajouterNouvelleRuche()">➕ Ruche</button>
+    <button class="btn-add" style="background-color: #3498db; color: white;" onclick="ouvrirPromptRang()">➕ Rang</button>
+    <button class="btn-add" style="background-color: #27ae60; color: white;" onclick="exporterRucher()">💾 Export</button>
+    <button class="btn-add" style="background-color: #8e44ad; color: white;" onclick="document.getElementById('input-import').click()">📥 Import</button>
+    <input type="file" id="input-import" style="display:none" onchange="importerRucher(event)">
+</div>
+    </header>
+
+    <div id="grille-libre" class="rucher-canvas"></div>
+
+    <div id="modal-visite" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="fermerModal()">&times;</span>
+            <h3 id="modal-titre">Détails</h3>
+            <div id="menu-choix">
+                <button onclick="afficherFormulaire()" class="btn-save">➕ Nouvelle Visite</button>
+                <button onclick="modifierInfosRuche()" class="btn-cancel" style="background:#f39c12;">✏️ Renommer</button>
+                <button onclick="supprimerRucheDefinitif()" class="btn-cancel" style="background:#e74c3c;">🗑️ Supprimer</button>
+                <button onclick="afficherHistoriqueComplet()" class="btn-cancel" style="background:#3498db;">📜 Historique</button>
+            </div>
+            <div id="ecran-formulaire" style="display:none;">
+                <input type="number" id="cadre-reserve" placeholder="Cadres réserves">
+                <input type="number" id="cadre-couvain" placeholder="Cadres couvain">
+                <select id="note-ruche">
+    <option value="-">- Note -</option>
+    <option value="S">S (Très forte)</option>
+    <option value="A">A (Forte)</option>
+    <option value="B">B (Moyenne)</option>
+    <option value="C">C (Faible / En retard)</option>
+</select>
+                <textarea id="notes-visite" placeholder="Notes de visite..."></textarea>
+                <button onclick="sauvegarderVisite()" class="btn-save">Enregistrer</button>
+                <button onclick="revenirAuMenu()" class="btn-cancel">Retour</button>
+            </div>
+            <div id="ecran-historique" style="display:none;">
+                <div id="liste-historique-complete" style="max-height:300px; overflow-y:auto;"></div>
+                <button onclick="revenirAuMenu()" class="btn-cancel">Retour</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-edit-rang" class="modal">
+        <div class="modal-content">
+            <h3>Paramètres du Rang</h3>
+            <div class="form-group">
+                <label>Nom du rang :</label>
+                <input type="text" id="edit-nom-rang">
+            </div>
+            <div class="form-group">
+                <label>Couleur du titre :</label>
+                <input type="color" id="edit-couleur-rang">
+            </div>
+            <button onclick="validerEditRang()" class="btn-save">Appliquer</button>
+            <button onclick="supprimerRangActuel()" class="btn-cancel" style="background:#e74c3c;">🗑️ Supprimer le Rang</button>
+            <button onclick="fermerModalEditRang()" class="btn-cancel">Fermer</button>
+        </div>
+    </div>
+
+    <div id="modal-rang" class="modal">
+        <div class="modal-content">
+            <h3>Nouveau Rang</h3>
+            <input type="text" id="nom-rang-input" placeholder="Nom (ex: Ligne Nord)">
+            <select id="orientation-rang-input">
+                <option value="column">Vertical (Colonne)</option>
+                <option value="row">Horizontal (Ligne)</option>
+            </select>
+            <button onclick="creerRang()" class="btn-save">Créer</button>
+            <button onclick="fermerModalRang()" class="btn-cancel">Annuler</button>
+        </div>
+    </div>
+
+    <div id="modal-type" class="modal">
+        <div class="modal-content">
+            <h3>Type de colonie ?</h3>
+            <button onclick="validerType('RUCHE')" class="btn-save">RUCHE</button>
+            <button onclick="validerType('RUCHETTE')" class="btn-save" style="background:#2980b9;">RUCHETTE</button>
+            <button onclick="fermerModalType()" class="btn-cancel">Annuler</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
