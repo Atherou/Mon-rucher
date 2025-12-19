@@ -9,7 +9,7 @@ if ('serviceWorker' in navigator) {
 let rucheActuelle = null;
 let nomEnAttente = "";
 let rangActuelIndex = null;
-let currentZoom = 1; // Variable pour le zoom
+let currentZoom = 1; 
 
 window.onload = () => {
     if (!localStorage.getItem('mon_rucher_pro')) {
@@ -96,26 +96,30 @@ function afficherRucher() {
         titre.className = "rang-titre";
         titre.innerText = rang.nom;
         titre.style.color = rang.couleur || "#f1c40f";
-        titre.onclick = () => ouvrirEditRang(rIdx);
+        titre.onclick = (e) => { e.stopPropagation(); ouvrirEditRang(rIdx); };
         rangDiv.appendChild(titre);
 
         rang.ruches.forEach((ruche) => {
             let rDiv = document.createElement('div');
             rDiv.className = 'bloc-ruche';
             rDiv.innerHTML = `<span>${ruche.type}</span><b>${ruche.id}</b>`;
-            rDiv.onclick = (e) => { e.stopPropagation(); ouvrirVisite(ruche.id); };
+            // Suppression du onclick ici pour éviter les conflits, on utilisera un EventListener plus bas
+            rDiv.addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                ouvrirVisite(ruche.id); 
+            });
             rangDiv.appendChild(rDiv);
         });
 
         canvas.appendChild(rangDiv);
 
-        // --- SORTABLE CONFIGURATION (PC & MOBILE) ---
+        // CONFIGURATION SORTABLE DES RUCHES
         new Sortable(rangDiv, {
             group: 'ruches-shared',
             animation: 150,
             draggable: '.bloc-ruche',
-            delay: 50, // Petit délai pour éviter les déclenchements accidentels au scroll
-            delayOnTouchOnly: true,
+            delay: 150,             // Délai pour mobile
+            delayOnTouchOnly: true, // Désactivé sur PC
             ghostClass: 'sortable-ghost', 
             onEnd: () => sauvegarderNouvelOrdre()
         });
@@ -124,7 +128,6 @@ function afficherRucher() {
     });
 }
 
-// Fonction pour déplacer les rangs (corrigée pour PC/Mobile)
 function rendreElementLibre(elm, idx) {
     const handleMove = (e) => {
         let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
@@ -162,7 +165,10 @@ function rendreElementLibre(elm, idx) {
     };
 
     const startMove = (e) => {
+        // Sécurité : on ne déplace le rang QUE si on clique sur le fond du rang ou le titre
+        // Mais PAS sur une ruche ou un bouton
         if (e.target.closest('.bloc-ruche') || e.target.closest('button')) return;
+        
         if (e.type === 'touchstart') e.stopPropagation(); 
 
         document.addEventListener('mousemove', handleMove);
