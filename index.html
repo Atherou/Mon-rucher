@@ -6,24 +6,31 @@
     <title>Mon Rucher Pro - Interface Épurée</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#f1c40f">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#f1c40f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/517/517563.png">
 </head>
 <body>
 
     <header>
         <h1>🐝 <span class="titre-miel" style="color: #8B6508; font-weight: 900; text-transform: uppercase;">Mon Rucher</span> 🐝</h1>
         <div class="btn-container">
-    <button class="btn-add" onclick="ajouterNouvelleRuche()">➕ Ruche</button>
-    <button class="btn-add" style="background-color: #3498db; color: white;" onclick="ouvrirPromptRang()">➕ Rang</button>
-    <button class="btn-add" style="background-color: #27ae60; color: white;" onclick="exporterRucher()">💾 Export</button>
-    <button class="btn-add" style="background-color: #8e44ad; color: white;" onclick="document.getElementById('input-import').click()">📥 Import</button>
-    <input type="file" id="input-import" style="display:none" onchange="importerRucher(event)">
-</div>
+            <button class="btn-add" onclick="ajouterNouvelleRuche()">➕ Ruche</button>
+            <button class="btn-add" style="background-color: #3498db; color: white;" onclick="ouvrirPromptRang()">➕ Rang</button>
+            <button class="btn-add" style="background-color: #27ae60; color: white;" onclick="exporterRucher()">💾 Export</button>
+            <button class="btn-add" style="background-color: #8e44ad; color: white;" onclick="document.getElementById('input-import').click()">📥 Import</button>
+            <input type="file" id="input-import" style="display:none" onchange="importerRucher(event)">
+        </div>
     </header>
 
     <div id="grille-libre" class="rucher-canvas"></div>
+
+    <div class="nav-controls">
+        <button onclick="zoom(1.2)" title="Zoom avant">➕</button>
+        <button onclick="zoom(0.8)" title="Zoom arrière">➖</button>
+        <button onclick="recentrer()" title="Recentrer le plan">🎯</button>
+    </div>
 
     <div id="modal-visite" class="modal">
         <div class="modal-content">
@@ -39,12 +46,12 @@
                 <input type="number" id="cadre-reserve" placeholder="Cadres réserves">
                 <input type="number" id="cadre-couvain" placeholder="Cadres couvain">
                 <select id="note-ruche">
-    <option value="-">- Note -</option>
-    <option value="S">S (Très forte)</option>
-    <option value="A">A (Forte)</option>
-    <option value="B">B (Moyenne)</option>
-    <option value="C">C (Faible / En retard)</option>
-</select>
+                    <option value="-">- Note -</option>
+                    <option value="S">S (Très forte)</option>
+                    <option value="A">A (Forte)</option>
+                    <option value="B">B (Moyenne)</option>
+                    <option value="C">C (Faible / En retard)</option>
+                </select>
                 <textarea id="notes-visite" placeholder="Notes de visite..."></textarea>
                 <button onclick="sauvegarderVisite()" class="btn-save">Enregistrer</button>
                 <button onclick="revenirAuMenu()" class="btn-cancel">Retour</button>
@@ -95,6 +102,7 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+<script src="sortable.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

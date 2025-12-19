@@ -13,7 +13,9 @@ body {
     background: var(--bg);
     color: var(--text);
     margin: 0;
-    overflow: hidden; /* Désactive le scroll body pour laisser le canvas gérer l'espace */
+    overflow: hidden; /* Canvas gère l'espace */
+    user-select: none; /* Empêche la sélection de texte parasite sur PC et Mobile */
+    -webkit-user-select: none;
 }
 
 /* --- HEADER --- */
@@ -35,18 +37,20 @@ header {
 
 .btn-container {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     justify-content: center;
     margin-top: 5px;
+    flex-wrap: wrap; /* Pour les petits écrans */
 }
 
 .btn-add {
-    padding: 8px 16px;
+    padding: 8px 12px;
     border-radius: 6px;
     border: none;
     font-weight: bold;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: transform 0.1s;
+    font-size: 14px;
 }
 
 .btn-add:active {
@@ -61,11 +65,37 @@ header {
     background-color: var(--bg);
     background-image: radial-gradient(#333 1px, transparent 1px);
     background-size: 50px 50px;
-    cursor: grab;
+    transform-origin: 0 0; /* Important pour le Zoom JS */
 }
 
-.rucher-canvas:active {
-    cursor: grabbing;
+/* --- NAVIGATION CONTROLS (ZOOM) --- */
+.nav-controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 3000;
+}
+
+.nav-controls button {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid #8B6508;
+    font-size: 22px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-controls button:active {
+    transform: scale(0.9);
+    background: #d4ac0d;
 }
 
 /* --- RANGS (CONTENEURS) --- */
@@ -73,29 +103,31 @@ header {
     position: absolute;
     display: flex;
     padding: 10px;
-    border: 1px dashed rgba(255,255,255,0.15);
+    border: 2px dashed rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.03);
     border-radius: 12px;
     min-width: 100px;
     min-height: 100px;
-    transition: background 0.2s, border 0.2s;
+    cursor: grab; /* Main ouverte sur PC */
+    touch-action: none; /* Crucial pour Android */
 }
 
-/* VERTICAL (Colonne) : Ruches les unes sous les autres */
+.rang-container:active {
+    cursor: grabbing; /* Main fermée quand on bouge le rang */
+}
+
 .rang-vertical {
     flex-direction: column; 
     align-items: center;
-    padding-top: 45px; /* Espace pour le titre au-dessus */
+    padding-top: 45px;
 }
 
-/* HORIZONTAL (Ligne) : Ruches les unes à côté des autres */
 .rang-horizontal {
     flex-direction: row; 
     align-items: center;
-    padding-top: 45px; /* Espace pour le titre au-dessus */
+    padding-top: 45px;
 }
 
-/* Titre des Rangs : Toujours au-dessus et centré */
 .rang-titre {
     position: absolute;
     top: 12px;
@@ -104,156 +136,91 @@ header {
     text-align: center;
     font-weight: bold;
     text-transform: uppercase;
+    color: var(--primary);
     cursor: pointer;
-    white-space: nowrap;
     z-index: 10;
-    letter-spacing: 1.5px;
     font-size: 0.85rem;
 }
 
-.rang-container.drag-over {
-    background: rgba(241, 196, 15, 0.1);
-    border: 1px solid var(--primary);
-}
-
-/* --- BLOCS RUCHES / RUCHETTES --- */
+/* --- BLOCS RUCHES --- */
 .bloc-ruche {
     background: var(--card-bg);
     width: 85px;
     height: 75px;
     margin: 6px;
     border-radius: 8px;
-    border-top: 3px solid var(--primary);
+    border-top: 4px solid var(--primary);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    cursor: grab;
+    cursor: move; /* Indique qu'on peut déplacer l'objet */
     box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-    transition: transform 0.1s;
-    user-select: none;
-}
-
-.bloc-ruche:active {
-    cursor: grabbing;
+    touch-action: none;
+    position: relative;
+    z-index: 20;
 }
 
 .bloc-ruche b {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     color: #fff;
-    margin-top: 2px;
+    pointer-events: none; /* Évite de bloquer le drag si on clique sur le texte */
 }
 
 .bloc-ruche span {
     font-size: 0.6rem;
     color: var(--primary);
     font-weight: bold;
-    text-transform: uppercase;
-    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* Apparence de la ruche pendant qu'on la déplace (SortableJS) */
+.sortable-ghost {
+    opacity: 0.2;
+    background: var(--primary) !important;
+    border: 2px dashed #000;
 }
 
 /* --- MODALES --- */
 .modal {
     display: none;
     position: fixed;
-    z-index: 2000;
+    z-index: 4000;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.9);
-    backdrop-filter: blur(5px);
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(4px);
 }
 
 .modal-content {
     background: var(--card-bg);
-    margin: 10% auto;
-    padding: 25px;
+    margin: 15vh auto;
+    padding: 20px;
     width: 85%;
-    max-width: 380px;
+    max-width: 350px;
     border-radius: 15px;
     border: 1px solid #333;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-.close-modal {
-    float: right;
-    color: var(--danger);
-    font-size: 30px;
-    font-weight: bold;
-    cursor: pointer;
-    line-height: 20px;
-}
-
-/* --- FORMULAIRES DANS MODALES --- */
+/* --- INPUTS ET BOUTONS --- */
 input, select, textarea {
     width: 100%;
-    margin: 10px 0;
+    margin: 8px 0;
     padding: 12px;
     border-radius: 8px;
-    background: #111;
+    background: #000;
     border: 1px solid #444;
     color: #fff;
     box-sizing: border-box;
-    font-size: 1rem;
 }
 
-.form-group label {
-    display: block;
-    margin-top: 15px;
-    font-size: 0.9rem;
-    color: var(--primary);
-    font-weight: bold;
-}
+.btn-save { background: var(--success); color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; margin-top: 10px; cursor: pointer;}
+.btn-cancel { background: #444; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; margin-top: 8px; cursor: pointer;}
 
-.btn-save {
-    background: var(--success);
-    color: white;
-    width: 100%;
-    padding: 12px;
-    border: none;
-    margin-top: 10px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.btn-cancel {
-    background: #444;
-    color: white;
-    width: 100%;
-    padding: 12px;
-    border: none;
-    margin-top: 10px;
-    border-radius: 8px;
-    font-weight: normal;
-    cursor: pointer;
-}
-
-/* Historique */
-#liste-historique-complete {
-    margin-top: 15px;
-    border-top: 1px solid #333;
-}
-
-.historique-item {
-    padding: 10px;
-    border-bottom: 1px solid #333;
-    font-size: 0.9rem;
-}
-
-/* Optimisation Tactile Android */
-.bloc-ruche, .rang-titre {
-    touch-action: none; /* Empêche le défilement de la page pendant le drag */
-    -webkit-tap-highlight-color: transparent; /* Enlève le carré bleu au clic */
-}
-
-.btn-add, .btn-save, .btn-cancel {
-    min-height: 48px; /* Taille minimale recommandée par Google pour les doigts */
-    font-size: 16px; /* Évite le zoom automatique sur les inputs Android */
-}
-
-/* Scroll fluide pour l'historique sur mobile */
-#liste-historique-complete {
-    -webkit-overflow-scrolling: touch;
+/* Ajustements Android */
+@media (max-width: 600px) {
+    .btn-add { padding: 10px 14px; font-size: 13px; }
+    .nav-controls button { width: 60px; height: 60px; }
 }

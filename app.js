@@ -1,6 +1,15 @@
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker enregistré !'))
+            .catch(err => console.log('Erreur SW:', err));
+    });
+}
+
 let rucheActuelle = null;
 let nomEnAttente = "";
 let rangActuelIndex = null;
+let currentZoom = 1; // Variable pour le zoom
 
 window.onload = () => {
     if (!localStorage.getItem('mon_rucher_pro')) {
@@ -8,6 +17,23 @@ window.onload = () => {
     }
     afficherRucher();
 };
+
+/* --- Navigation & Zoom --- */
+function zoom(factor) {
+    currentZoom *= factor;
+    if (currentZoom < 0.3) currentZoom = 0.3;
+    if (currentZoom > 3) currentZoom = 3;
+    const canvas = document.getElementById('grille-libre');
+    canvas.style.transform = `scale(${currentZoom})`;
+    canvas.style.transformOrigin = "0 0";
+}
+
+function recentrer() {
+    currentZoom = 1;
+    const canvas = document.getElementById('grille-libre');
+    canvas.style.transform = `scale(1)`;
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+}
 
 /* --- Rangs --- */
 function ouvrirPromptRang() { document.getElementById('modal-rang').style.display = 'block'; }
@@ -51,7 +77,7 @@ function supprimerRangActuel() {
     afficherRucher();
 }
 
-/* --- Affichage et Swap --- */
+/* --- Affichage --- */
 function afficherRucher() {
     const canvas = document.getElementById('grille-libre');
     let data = JSON.parse(localStorage.getItem('mon_rucher_pro'));
@@ -59,96 +85,94 @@ function afficherRucher() {
 
     data.rangs.forEach((rang, rIdx) => {
         let rangDiv = document.createElement('div');
-        
-        // CORRECTION : On applique bien 'vertical' pour 'column' et 'horizontal' pour 'row'
         const orientationClass = (rang.orientation === 'column') ? 'vertical' : 'horizontal';
         rangDiv.className = `rang-container rang-${orientationClass}`;
         
+        rangDiv.setAttribute('data-idx', rIdx);
         rangDiv.style.left = rang.x + "px";
         rangDiv.style.top = rang.y + "px";
 
-        // Gestion du drop (échange ou ajout)
-        rangDiv.ondragover = (e) => { e.preventDefault(); rangDiv.classList.add('drag-over'); };
-        rangDiv.ondragleave = () => rangDiv.classList.remove('drag-over');
-        rangDiv.ondrop = (e) => { 
-            rangDiv.classList.remove('drag-over');
-            handleDropRuche(e, rIdx, null); 
-        };
-
-        // Titre (Toujours en haut et centré via CSS)
         let titre = document.createElement('div');
         titre.className = "rang-titre";
         titre.innerText = rang.nom;
-        titre.style.color = rang.couleur || "#ff0000";
-        titre.onclick = (e) => { e.stopPropagation(); ouvrirEditRang(rIdx); };
+        titre.style.color = rang.couleur || "#f1c40f";
+        titre.onclick = () => ouvrirEditRang(rIdx);
         rangDiv.appendChild(titre);
 
-        // Affichage des ruches
-        rang.ruches.forEach((ruche, rucheIdx) => {
+        rang.ruches.forEach((ruche) => {
             let rDiv = document.createElement('div');
             rDiv.className = 'bloc-ruche';
-            rDiv.draggable = true;
-            
-            rDiv.ondragstart = (e) => {
-                e.stopPropagation();
-                e.dataTransfer.setData("rucheId", ruche.id);
-                e.dataTransfer.setData("fromRang", rIdx);
-                e.dataTransfer.setData("fromIdx", rucheIdx);
-            };
-
-            rDiv.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); rDiv.style.transform = "scale(1.05)"; };
-            rDiv.ondragleave = () => rDiv.style.transform = "scale(1)";
-            rDiv.ondrop = (e) => { 
-                e.preventDefault(); e.stopPropagation(); 
-                rDiv.style.transform = "scale(1)";
-                handleDropRuche(e, rIdx, rucheIdx); 
-            };
-
             rDiv.innerHTML = `<span>${ruche.type}</span><b>${ruche.id}</b>`;
             rDiv.onclick = (e) => { e.stopPropagation(); ouvrirVisite(ruche.id); };
             rangDiv.appendChild(rDiv);
         });
 
-        rendreElementLibre(rangDiv, rIdx);
         canvas.appendChild(rangDiv);
+
+        // --- SORTABLE CONFIGURATION (PC & MOBILE) ---
+        new Sortable(rangDiv, {
+            group: 'ruches-shared',
+            animation: 150,
+            draggable: '.bloc-ruche',
+            delay: 50, // Petit délai pour éviter les déclenchements accidentels au scroll
+            delayOnTouchOnly: true,
+            ghostClass: 'sortable-ghost', 
+            onEnd: () => sauvegarderNouvelOrdre()
+        });
+
+        rendreElementLibre(rangDiv, rIdx);
     });
 }
 
-function handleDropRuche(e, toRangIdx, toRucheIdx) {
-    let data = JSON.parse(localStorage.getItem('mon_rucher_pro'));
-    let rucheId = e.dataTransfer.getData("rucheId");
-    let fromRangIdx = parseInt(e.dataTransfer.getData("fromRang"));
-    let fromRucheIdx = parseInt(e.dataTransfer.getData("fromIdx"));
-
-    let [rucheMobile] = data.rangs[fromRangIdx].ruches.splice(fromRucheIdx, 1);
-
-    if (toRucheIdx !== null) {
-        data.rangs[toRangIdx].ruches.splice(toRucheIdx, 0, rucheMobile);
-    } else {
-        data.rangs[toRangIdx].ruches.push(rucheMobile);
-    }
-
-    localStorage.setItem('mon_rucher_pro', JSON.stringify(data));
-    afficherRucher();
-}
-
+// Fonction pour déplacer les rangs (corrigée pour PC/Mobile)
 function rendreElementLibre(elm, idx) {
-    elm.onmousedown = (e) => {
-        if (e.target.closest('.bloc-ruche')) return;
-        let pos3 = e.clientX, pos4 = e.clientY;
-        document.onmouseup = () => {
-            document.onmouseup = null; document.onmousemove = null;
-            let data = JSON.parse(localStorage.getItem('mon_rucher_pro'));
-            data.rangs[idx].x = elm.offsetLeft; data.rangs[idx].y = elm.offsetTop;
-            localStorage.setItem('mon_rucher_pro', JSON.stringify(data));
-        };
-        document.onmousemove = (e) => {
-            let pos1 = pos3 - e.clientX, pos2 = pos4 - e.clientY;
-            pos3 = e.clientX; pos4 = e.clientY;
-            elm.style.top = (elm.offsetTop - pos2) + "px";
-            elm.style.left = (elm.offsetLeft - pos1) + "px";
-        };
+    const handleMove = (e) => {
+        let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+        if (!elm.dataset.startX) {
+            elm.dataset.startX = clientX;
+            elm.dataset.startY = clientY;
+            return;
+        }
+
+        let deltaX = (clientX - elm.dataset.startX) / currentZoom;
+        let deltaY = (clientY - elm.dataset.startY) / currentZoom;
+
+        elm.style.left = (elm.offsetLeft + deltaX) + "px";
+        elm.style.top = (elm.offsetTop + deltaY) + "px";
+
+        elm.dataset.startX = clientX;
+        elm.dataset.startY = clientY;
     };
+
+    const stopMove = () => {
+        document.removeEventListener('mousemove', handleMove);
+        document.removeEventListener('mouseup', stopMove);
+        document.removeEventListener('touchmove', handleMove);
+        document.removeEventListener('touchend', stopMove);
+        
+        let data = JSON.parse(localStorage.getItem('mon_rucher_pro'));
+        data.rangs[idx].x = elm.offsetLeft;
+        data.rangs[idx].y = elm.offsetTop;
+        localStorage.setItem('mon_rucher_pro', JSON.stringify(data));
+        
+        delete elm.dataset.startX;
+        delete elm.dataset.startY;
+    };
+
+    const startMove = (e) => {
+        if (e.target.closest('.bloc-ruche') || e.target.closest('button')) return;
+        if (e.type === 'touchstart') e.stopPropagation(); 
+
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', stopMove);
+        document.addEventListener('touchmove', handleMove, { passive: false });
+        document.addEventListener('touchend', stopMove);
+    };
+
+    elm.addEventListener('mousedown', startMove);
+    elm.addEventListener('touchstart', startMove, { passive: false });
 }
 
 /* --- Ruches --- */
@@ -206,7 +230,6 @@ function sauvegarderVisite() {
     let data = JSON.parse(localStorage.getItem('mon_rucher_pro'));
     let rucheObj = null;
     
-    // Trouver la ruche
     data.rangs.forEach(rg => {
         let found = rg.ruches.find(x => x.id === rucheActuelle);
         if (found) rucheObj = found;
@@ -221,11 +244,9 @@ function sauvegarderVisite() {
     };
 
     if (indexEditionVisite !== null) {
-        // Mode édition
         rucheObj.visites[indexEditionVisite] = nouvelleVisite;
         indexEditionVisite = null;
     } else {
-        // Mode création
         rucheObj.visites.push(nouvelleVisite);
     }
 
@@ -246,7 +267,6 @@ function afficherHistoriqueComplet() {
             <div style="color:var(--primary); font-weight:bold; margin-bottom:4px;">📅 ${v.date}</div>
             <div style="font-size:0.9rem;">🍯 Rés: ${v.reserves} | 🐝 Couv: ${v.couvain} | ⭐ Note: ${v.note}</div>
             <div style="font-style:italic; color:#bbb; font-size:0.85rem; margin-top:4px;">${v.obs || "Aucune note"}</div>
-            
             <div style="margin-top:10px; display:flex; gap:15px;">
                 <span onclick="editerVisite(${idx})" style="cursor:pointer; font-size:0.9rem;">✏️ Modifier</span>
                 <span onclick="supprimerVisite(${idx})" style="cursor:pointer; font-size:0.9rem; color:#e74c3c;">🗑️ Supprimer</span>
@@ -259,24 +279,20 @@ function afficherHistoriqueComplet() {
     document.getElementById('ecran-historique').style.display = 'block';
 }
 
-// --- VARIABLES GLOBALES ---
-let indexEditionVisite = null; // Pour savoir quelle visite on modifie
+let indexEditionVisite = null;
 
 function supprimerVisite(idxVisite) {
     if (!confirm("Supprimer cette visite définitivement ?")) return;
-    
     let data = JSON.parse(localStorage.getItem('mon_rucher_pro'));
     data.rangs.forEach(rg => {
         let ru = rg.ruches.find(x => x.id === rucheActuelle);
         if (ru) {
-            // L'historique affiché est inversé (.reverse()), il faut donc recalculer l'index réel
             let indexReel = ru.visites.length - 1 - idxVisite; 
             ru.visites.splice(indexReel, 1);
         }
     });
-    
     localStorage.setItem('mon_rucher_pro', JSON.stringify(data));
-    afficherHistoriqueComplet(); // Actualise l'affichage
+    afficherHistoriqueComplet();
 }
 
 function editerVisite(idxVisite) {
@@ -290,26 +306,20 @@ function editerVisite(idxVisite) {
     let indexReel = ru.visites.length - 1 - idxVisite;
     let v = ru.visites[indexReel];
 
-    // Remplir le formulaire
     document.getElementById('cadre-reserve').value = v.reserves;
     document.getElementById('cadre-couvain').value = v.couvain;
     document.getElementById('note-ruche').value = v.note;
     document.getElementById('notes-visite').value = v.obs;
 
-    indexEditionVisite = indexReel; // On stocke l'index pour la sauvegarde
-
-    // Basculer vers le formulaire
+    indexEditionVisite = indexReel;
     document.getElementById('ecran-historique').style.display = 'none';
     document.getElementById('ecran-formulaire').style.display = 'block';
 }
 
-// --- EXPORTATION (Envoi vers PC) ---
 function exporterRucher() {
     const data = localStorage.getItem('mon_rucher_pro');
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
-    // Création d'un lien invisible pour télécharger le fichier
     const a = document.createElement('a');
     a.href = url;
     a.download = `rucher_backup_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
@@ -317,28 +327,44 @@ function exporterRucher() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    alert("Fichier de sauvegarde généré ! Envoie-le maintenant par mail pour le récupérer sur ton PC.");
+    alert("Fichier de sauvegarde généré !");
 }
 
-// --- IMPORTATION (Récupération sur PC) ---
 function importerRucher(event) {
     const fichier = event.target.files[0];
     if (!fichier) return;
-
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
             const contenu = e.target.result;
-            // On vérifie que c'est bien du JSON valide avant d'écraser
             JSON.parse(contenu); 
             localStorage.setItem('mon_rucher_pro', contenu);
-            alert("Rucher synchronisé avec succès !");
-            location.reload(); // Recharge la page pour afficher les nouvelles données
-        } catch (err) {
-            alert("Erreur : Le fichier de sauvegarde est invalide.");
-        }
+            alert("Rucher synchronisé !");
+            location.reload();
+        } catch (err) { alert("Fichier invalide."); }
     };
     reader.readAsText(fichier);
 }
 
+function sauvegarderNouvelOrdre() {
+    let data = JSON.parse(localStorage.getItem('mon_rucher_pro'));
+    const containers = document.querySelectorAll('.rang-container');
+
+    containers.forEach(container => {
+        const rIdx = container.getAttribute('data-idx');
+        const ruchesDivs = container.querySelectorAll('.bloc-ruche');
+        let nouvellesRuches = [];
+        
+        ruchesDivs.forEach(div => {
+            const idRuche = div.querySelector('b').innerText;
+            let rucheObj = null;
+            data.rangs.forEach(r => {
+                let found = r.ruches.find(ru => ru.id == idRuche);
+                if(found) rucheObj = found;
+            });
+            if(rucheObj) nouvellesRuches.push(rucheObj);
+        });
+        data.rangs[rIdx].ruches = nouvellesRuches;
+    });
+    localStorage.setItem('mon_rucher_pro', JSON.stringify(data));
+}
