@@ -224,3 +224,49 @@ input, select, textarea {
     .btn-add { padding: 10px 14px; font-size: 13px; }
     .nav-controls button { width: 60px; height: 60px; }
 }
+
+.sante-coeur {
+    font-size: 1.2rem;
+    margin-top: 2px;
+    line-height: 1;
+    text-shadow: 0 0 5px rgba(0,0,0,0.5); /* Pour que le coeur ressorte bien */
+}
+
+/* On ajuste un peu le bloc ruche pour laisser de la place au coeur */
+.bloc-ruche {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 70px; /* Un peu plus haut pour le confort visuel */
+}
+
+#nav-controls {
+    position: fixed;
+    bottom: 20px; /* Distance du bas */
+    right: 20px;  /* Distance de la droite */
+    display: flex;
+    flex-direction: column; /* Boutons les uns sur les autres */
+    gap: 10px;
+    z-index: 5000; /* Pour passer au-dessus de tout */
+}
+
+#nav-controls button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: none;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#nav-controls button:active {
+    transform: scale(0.9);
+}
