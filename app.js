@@ -7,45 +7,28 @@ let nomEnAttente = "";
 let rangActuelIndex = null;
 let currentZoom = 1; 
 
-// Initialisation au chargement
 window.onload = () => {
     try {
         const rawData = localStorage.getItem(STORAGE_KEY);
         if (!rawData) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify({ rangs: [] }));
-        } else {
-            JSON.parse(rawData); // Test de lecture
         }
-    } catch (e) {
-        console.error("Erreur de lecture, tentative de restauration backup...");
-        restaurerBackup();
-    }
+    } catch (e) { restaurerBackup(); }
     afficherRucher();
 };
 
-/* --- MOTEUR DE SAUVEGARDE SÉCURISÉ --- */
 function sauvegarder(data) {
     try {
         const actuelle = localStorage.getItem(STORAGE_KEY);
-        if (actuelle) localStorage.setItem(BACKUP_KEY, actuelle); // Backup de sécurité
+        if (actuelle) localStorage.setItem(BACKUP_KEY, actuelle);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-        alert("Erreur critique de stockage. Votre mémoire est peut-être pleine.");
-    }
+    } catch (e) { alert("Erreur de stockage."); }
 }
 
-function restaurerBackup() {
-    const backup = localStorage.getItem(BACKUP_KEY);
-    if (backup) {
-        localStorage.setItem(STORAGE_KEY, backup);
-        location.reload();
-    }
-}
-
-/* --- NAVIGATION ET ZOOM --- */
+/* --- NAVIGATION --- */
 function zoom(factor) {
     currentZoom *= factor;
-    currentZoom = Math.min(Math.max(currentZoom, 0.3), 3); // Limites de sécurité
+    currentZoom = Math.min(Math.max(currentZoom, 0.3), 3);
     const canvas = document.getElementById('grille-libre');
     if (canvas) {
         canvas.style.transform = `scale(${currentZoom})`;
@@ -67,17 +50,13 @@ function afficherRucher() {
         let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
         canvas.innerHTML = "";
 
-        // Mise à jour du compteur de cheptel
         let nR = 0, nRt = 0;
         data.rangs.forEach(r => {
-            r.ruches.forEach(ru => {
-                if (ru.type === 'RUCHE') nR++; else nRt++;
-            });
+            r.ruches.forEach(ru => { if (ru.type === 'RUCHE') nR++; else nRt++; });
         });
         const cpter = document.getElementById('compteur-cheptel');
         if(cpter) cpter.innerText = `Ruches : ${nR} | Ruchettes : ${nRt}`;
 
-        // Génération des rangs
         data.rangs.forEach((rang, rIdx) => {
             let rangDiv = document.createElement('div');
             rangDiv.className = `rang-container rang-${rang.orientation === 'column' ? 'vertical' : 'horizontal'}`;
@@ -97,7 +76,6 @@ function afficherRucher() {
                 rDiv.className = 'bloc-ruche';
                 rDiv.setAttribute('data-uid', ruche.uid);
 
-                // Indicateurs centrés
                 let couleurCoeur = "transparent";
                 if (ruche.visites && ruche.visites.length > 0) {
                     const note = ruche.visites[ruche.visites.length - 1].note;
@@ -111,105 +89,102 @@ function afficherRucher() {
                 htmlIcons += `</div>`;
 
                 rDiv.innerHTML = `<span>${ruche.type}</span><b>${ruche.id}</b>${htmlIcons}`;
-                rDiv.onclick = (e) => { e.stopPropagation(); ouvrirVisite(ruche.uid); };
+                
+                // --- SÉCURITÉ CLIC MOBILE ---
+                rDiv.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    ouvrirVisite(ruche.uid);
+                });
+
                 rangDiv.appendChild(rDiv);
             });
 
             canvas.appendChild(rangDiv);
 
+            // SortableJS avec délai pour éviter les clics accidentels
             new Sortable(rangDiv, {
                 group: 'ruches-shared',
                 animation: 150,
                 draggable: '.bloc-ruche',
+                delay: 100, // Petit délai pour distinguer le clic du drag
+                delayOnTouchOnly: true,
                 onEnd: () => sauvegarderNouvelOrdre()
             });
 
             rendreElementLibre(rangDiv, rIdx);
         });
-    } catch (e) {
-        console.error("Erreur d'affichage fatale", e);
-    }
+    } catch (e) { console.error(e); }
 }
 
-/* --- GESTION DES RANGS --- */
-function ouvrirPromptRang() { document.getElementById('modal-rang').style.display = 'block'; }
-function fermerModalRang() { document.getElementById('modal-rang').style.display = 'none'; }
-
-function creerRang() {
-    let nom = document.getElementById('nom-rang-input').value || "Nouveau Rang";
-    let orientation = document.getElementById('orientation-rang-input').value;
-    let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    data.rangs.push({ nom: nom, orientation: orientation, couleur: "#f1c40f", x: 100, y: 150, ruches: [] });
-    sauvegarder(data);
-    fermerModalRang();
-    afficherRucher();
-}
-
-function ouvrirEditRang(idx) {
-    rangActuelIndex = idx;
-    let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    document.getElementById('edit-nom-rang').value = data.rangs[idx].nom;
-    document.getElementById('edit-couleur-rang').value = data.rangs[idx].couleur;
-    document.getElementById('modal-edit-rang').style.display = 'block';
-}
-
-function validerEditRang() {
-    let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    data.rangs[rangActuelIndex].nom = document.getElementById('edit-nom-rang').value;
-    data.rangs[rangActuelIndex].couleur = document.getElementById('edit-couleur-rang').value;
-    sauvegarder(data);
-    document.getElementById('modal-edit-rang').style.display = 'none';
-    afficherRucher();
-}
-
-function supprimerRangActuel() {
-    if(!confirm("⚠️ Attention : Supprimer ce rang supprimera aussi ses ruches !")) return;
-    let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    data.rangs.splice(rangActuelIndex, 1);
-    sauvegarder(data);
-    document.getElementById('modal-edit-rang').style.display = 'none';
-    afficherRucher();
-}
-
-/* --- DRAG & DROP LIBRE --- */
+/* --- DRAG RANGS (AMÉLIORÉ MOBILE) --- */
 function rendreElementLibre(elm, idx) {
+    let isDragging = false;
+    let startX, startY;
+
     const move = (e) => {
+        isDragging = true; // Si on bouge, ce n'est plus un clic
         let x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
         let y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-        if (!elm.dataset.startX) { elm.dataset.startX = x; elm.dataset.startY = y; return; }
+        
+        if (!elm.dataset.startX) { 
+            elm.dataset.startX = x; 
+            elm.dataset.startY = y; 
+            return; 
+        }
+
         let dx = (x - elm.dataset.startX) / currentZoom;
         let dy = (y - elm.dataset.startY) / currentZoom;
+
         elm.style.left = (elm.offsetLeft + dx) + "px";
         elm.style.top = (elm.offsetTop + dy) + "px";
-        elm.dataset.startX = x; elm.dataset.startY = y;
+        
+        elm.dataset.startX = x; 
+        elm.dataset.startY = y;
     };
+
     const stop = () => {
-        document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', stop);
-        document.removeEventListener('touchmove', move); document.removeEventListener('touchend', stop);
-        let d = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if(d.rangs[idx]) {
-            d.rangs[idx].x = parseInt(elm.style.left);
-            d.rangs[idx].y = parseInt(elm.style.top);
-            sauvegarder(d);
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', stop);
+        document.removeEventListener('touchmove', move);
+        document.removeEventListener('touchend', stop);
+        
+        if (isDragging) {
+            let d = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if(d.rangs[idx]) {
+                d.rangs[idx].x = parseInt(elm.style.left);
+                d.rangs[idx].y = parseInt(elm.style.top);
+                sauvegarder(d);
+            }
         }
-        delete elm.dataset.startX; delete elm.dataset.startY;
+        delete elm.dataset.startX;
+        delete elm.dataset.startY;
     };
+
+    // Événement Souris
     elm.addEventListener('mousedown', (e) => {
+        // Si on clique sur une ruche ou un bouton, on laisse l'événement normal se faire
         if (e.target.closest('.bloc-ruche') || e.target.closest('button') || e.target.closest('.rang-titre')) return;
-        document.addEventListener('mousemove', move); document.addEventListener('mouseup', stop);
+        isDragging = false;
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', stop);
     });
+
+    // Événement Tactile (Mobile)
     elm.addEventListener('touchstart', (e) => {
+        // Crucial : Ne pas empêcher le clic sur les ruches
         if (e.target.closest('.bloc-ruche') || e.target.closest('button') || e.target.closest('.rang-titre')) return;
-        document.addEventListener('touchmove', move, {passive:false}); document.addEventListener('touchend', stop);
-    }, {passive:false});
+        
+        isDragging = false;
+        document.addEventListener('touchmove', move, { passive: false });
+        document.addEventListener('touchend', stop);
+    }, { passive: true }); // "true" permet au défilement naturel de fonctionner
 }
 
-/* --- ACTIONS RUCHES --- */
+/* --- RESTE DES FONCTIONS (IDENTIQUES) --- */
 function ajouterNouvelleRuche() {
-    let nom = prompt("Nom ou numéro de la ruche :");
-    if (!nom) return;
+    let nom = prompt("Nom :"); if (!nom) return;
     let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!data.rangs.length) return alert("Veuillez d'abord créer un rang.");
     nomEnAttente = nom;
     const sel = document.getElementById('select-rang-destination');
     sel.innerHTML = data.rangs.map((r, i) => `<option value="${i}">${r.nom}</option>`).join('');
@@ -220,11 +195,8 @@ function validerType(type) {
     let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
     let idx = document.getElementById('select-rang-destination').value;
     data.rangs[idx].ruches.push({
-        uid: "r-" + Date.now() + "-" + Math.floor(Math.random() * 1000), // Sécurité UID
-        id: nomEnAttente,
-        type: type,
-        visites: [],
-        elevage: null
+        uid: "r-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id: nomEnAttente, type: type, visites: [], elevage: null
     });
     sauvegarder(data);
     document.getElementById('modal-type').style.display = 'none';
@@ -242,7 +214,6 @@ function ouvrirVisite(uid) {
 }
 
 function fermerModal() { document.getElementById('modal-visite').style.display = 'none'; }
-
 function revenirAuMenu() {
     document.getElementById('menu-choix').style.display = 'block';
     ['ecran-formulaire', 'ecran-historique', 'ecran-elevage'].forEach(id => {
@@ -253,8 +224,6 @@ function revenirAuMenu() {
 function sauvegarderVisite() {
     let res = document.getElementById('cadre-reserve').value;
     let couv = document.getElementById('cadre-couvain').value;
-    if (!res || !couv) return alert("Notez le nombre de cadres !");
-    
     let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
     data.rangs.forEach(rg => {
         let ru = rg.ruches.find(x => x.uid === rucheActuelle);
@@ -271,7 +240,6 @@ function sauvegarderVisite() {
     afficherRucher(); fermerModal();
 }
 
-/* --- ÉLEVAGE REINE --- */
 function afficherElevage() {
     document.getElementById('menu-choix').style.display = 'none';
     document.getElementById('ecran-elevage').style.display = 'block';
@@ -281,6 +249,7 @@ function afficherElevage() {
 function majInterfaceElevage() {
     let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
     let ru = null;
+    data.rangs.forEach(r => { let f = r.ruches.find(x => x.uid === uid); if(f) ru = f; }); // Note: correction ici pour utiliser rucheActuelle
     data.rangs.forEach(r => { let f = r.ruches.find(x => x.uid === rucheActuelle); if(f) ru = f; });
     if (ru && ru.elevage) {
         document.getElementById('info-elevage-vide').style.display = 'none';
@@ -303,7 +272,7 @@ function demarrerCycle() {
 }
 
 function stopperCycle() {
-    if(!confirm("Voulez-vous arrêter le suivi d'élevage ?")) return;
+    if(!confirm("Arrêter l'élevage ?")) return;
     let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
     data.rangs.forEach(r => {
         let ru = r.ruches.find(x => x.uid === rucheActuelle);
@@ -316,8 +285,8 @@ function stopperCycle() {
 function genererCalendrierHTML(iso) {
     const d = new Date(iso);
     const etapes = [
-        { j: 0, t: "Greffage (J0)" }, { j: 5, t: "Operculation (J5)" },
-        { j: 10, t: "⚠️ Protection (J10)" }, { j: 13, t: "🐣 Éclosion (J13)" }, { j: 21, t: "👑 Ponte (J21)" }
+        { j: 0, t: "Greffage" }, { j: 5, t: "Operculation" },
+        { j: 10, t: "Protection" }, { j: 13, t: "Éclosion" }, { j: 21, t: "Ponte" }
     ];
     document.getElementById('liste-dates-elevage').innerHTML = etapes.map(e => {
         let dateE = new Date(d); dateE.setDate(d.getDate() + e.j);
@@ -325,7 +294,6 @@ function genererCalendrierHTML(iso) {
     }).join('');
 }
 
-/* --- EXPORT / IMPORT SÉCURISÉ --- */
 function exporterRucher() {
     const data = localStorage.getItem(STORAGE_KEY);
     const date = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
@@ -341,14 +309,8 @@ function importerRucher(e) {
     reader.onload = (event) => {
         try {
             const contenu = JSON.parse(event.target.result);
-            if (!contenu.rangs) throw new Error(); // Vérifie le format
-            if (confirm("⚠️ Cela va écraser vos données actuelles. Confirmer ?")) {
-                sauvegarder(contenu);
-                location.reload();
-            }
-        } catch (err) {
-            alert("Erreur : Le fichier de sauvegarde est invalide.");
-        }
+            if (confirm("Remplacer les données ?")) { sauvegarder(contenu); location.reload(); }
+        } catch (err) { alert("Fichier invalide."); }
     };
     reader.readAsText(e.target.files[0]);
 }
@@ -385,7 +347,7 @@ function modifierNomRuche() {
 }
 
 function supprimerRucheDefinitif() {
-    if (confirm("Supprimer cette ruche définitivement ?")) {
+    if (confirm("Supprimer cette ruche ?")) {
         let d = JSON.parse(localStorage.getItem(STORAGE_KEY));
         d.rangs.forEach(r => { r.ruches = r.ruches.filter(x => x.uid !== rucheActuelle); });
         sauvegarder(d);

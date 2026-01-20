@@ -77,8 +77,8 @@ header {
 }
 
 #nav-controls button {
-    width: 50px;
-    height: 50px;
+    width: 55px;
+    height: 55px;
     border-radius: 50%;
     background: var(--primary);
     border: 2px solid #8B6508;
@@ -102,7 +102,8 @@ header {
     border-radius: 12px;
     min-width: 100px;
     min-height: 100px;
-    touch-action: none;
+    /* Empêche le défilement de la page quand on déplace un rang */
+    touch-action: none; 
 }
 
 .rang-vertical { flex-direction: column; align-items: center; }
@@ -136,7 +137,9 @@ header {
     box-shadow: 0 4px 8px rgba(0,0,0,0.4);
     position: relative;
     z-index: 20;
-    touch-action: none;
+    cursor: pointer;
+    /* Indispensable pour que le clic mobile soit réactif */
+    touch-action: manipulation; 
 }
 
 .bloc-ruche b { 
@@ -144,6 +147,7 @@ header {
     color: #fff; 
     margin-bottom: 2px;
     line-height: 1;
+    pointer-events: none; /* Empêche le texte de bloquer le clic sur la ruche */
 }
 
 .bloc-ruche span { 
@@ -151,6 +155,7 @@ header {
     color: var(--primary); 
     font-weight: bold; 
     text-transform: uppercase;
+    pointer-events: none;
 }
 
 /* Barre de statut (Cœur et Couronne) centrée sous le nom */
@@ -162,6 +167,7 @@ header {
     width: 100%;
     margin-top: 4px;
     height: 1.2rem;
+    pointer-events: none;
 }
 
 .status-bar-icons span {
