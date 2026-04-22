@@ -3,132 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mon Rucher Pro - Interface Épurée</title>
+    <title>Mon Rucher Pro</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#f1c40f">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/517/517563.png">
 </head>
 <body>
 
-    <header>
-        <h1>🐝 <span class="titre-miel" style="color: #8B6508; font-weight: 900; text-transform: uppercase;">Mon Rucher</span> 🐝</h1>
-        <div id="compteur-cheptel" style="text-align: center; font-size: 0.9rem; color: #8B6508; font-weight: bold; margin-bottom: 10px;">
-    Ruches : 0 | Ruchettes : 0
+<header>
+    <h1>Mon Rucher Pro</h1>
+    <div id="compteur-cheptel">Ruches : 0 | Ruchettes : 0</div>
+    <div class="btn-container">
+        <button class="btn-add" style="background:#2ecc71; color:white;" onclick="ajouterNouvelleRuche()">+ Ruche</button>
+        <button class="btn-add" style="background:#f1c40f; color:black;" onclick="ouvrirPromptRang()">+ Bloc</button>
+        <button class="btn-add" style="background:#34495e; color:white;" onclick="exporterRucher()">💾 Export</button>
+        <label class="btn-add" style="background:#34495e; color:white; cursor:pointer;">
+            📂 Import <input type="file" id="import-file" style="display:none" onchange="importerRucher(event)">
+        </label>
+    </div>
+</header>
+
+<div id="grille-libre"></div>
+
+<div id="nav-controls">
+    <button onclick="zoom(1.2)">+</button>
+    <button onclick="zoom(0.8)">-</button>
+    <button onclick="recentrer()">🎯</button>
 </div>
-        <div class="btn-container">
-            <button class="btn-add" onclick="ajouterNouvelleRuche()">➕ Ruche</button>
-            <button class="btn-add" style="background-color: #3498db; color: white;" onclick="ouvrirPromptRang()">➕ Rang</button>
-            <button class="btn-add" style="background-color: #27ae60; color: white;" onclick="exporterRucher()">📤 Sauver</button>
-            <button class="btn-add" style="background-color: #e67e22; color: white;" onclick="document.getElementById('import-file').click()">📥 Charger</button>
-            <input type="file" id="import-file" style="display:none" onchange="importerRucher(event)">
+
+<div id="modal-visite" class="modal">
+    <div class="modal-content">
+        <h2 id="modal-titre">Ruche</h2>
+        
+        <div id="menu-choix">
+            <button style="background: var(--success) !important;" onclick="afficherFormulaire()">📝 Nouvelle Visite</button>
+            <button style="background: var(--success) !important;" onclick="afficherHistorique()">📜 Historique</button>
+            <button style="background: var(--purple) !important;" onclick="afficherElevage()">👑 Élevage de reine</button>
+            <hr>
+            <button style="background: var(--orange) !important;" onclick="basculerTypeRuche()">🔄 Ruche / Ruchette</button>
+            <button style="background: #2c2c2c !important;" onclick="modifierNomRuche()">✏️ Renommer</button>
+            <button style="background: var(--danger) !important;" onclick="supprimerRucheDefinitif()">🗑️ Supprimer</button>
+            <button style="background: #444 !important;" onclick="fermerModal()">Fermer</button>
         </div>
-    </header>
 
-    <div id="nav-controls">
-        <button onclick="zoom(1.2)">➕</button>
-        <button onclick="zoom(0.8)">➖</button>
-        <button onclick="recentrer()">🎯</button>
-    </div>
-
-    <div id="grille-libre"></div>
-
-    <div id="modal-visite" class="modal">
-        <div class="modal-content">
-            <h2 id="modal-titre" style="margin-top:0; color:var(--primary);">Détails Ruche</h2>
-            
-            <div id="menu-choix">
-                <button class="btn-save" onclick="afficherFormulaire()">📝 Nouvelle Visite</button>
-                <button class="btn-save" style="background:#2980b9;" onclick="afficherHistoriqueComplet()">📜 Historique</button>
-                <button class="btn-save" style="background:#8e44ad;" onclick="afficherElevage()">👑 Élevage Reine</button>
-                <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
-                <button class="btn-save" style="background:#7f8c8d;" onclick="modifierInfosRuche()">⚙️ Renommer</button>
-                <button class="btn-cancel" style="background:#c0392b;" onclick="supprimerRucheDefinitif()">🗑️ Supprimer</button>
-                <button class="btn-cancel" onclick="fermerModal()">Fermer</button>
-            </div>
-
-            <div id="ecran-formulaire" style="display:none;">
-                <label>Réserves (Cadres) :</label>
-                <input type="number" id="cadre-reserve" placeholder="0">
-                <label>Couvain (Cadres) :</label>
-                <input type="number" id="cadre-couvain" placeholder="0">
-                <label>Note Globale :</label>
-                <select id="note-ruche">
-                    <option value="S">S (Exceptionnelle)</option>
-                    <option value="A" selected>A (Très bien)</option>
-                    <option value="B">B (Moyenne)</option>
-                    <option value="C">C (À surveiller)</option>
-                </select>
-                <label>Observations :</label>
-                <textarea id="notes-visite" rows="3" placeholder="Notes particulières..."></textarea>
-                <button class="btn-save" onclick="sauvegarderVisite()">Enregistrer</button>
-                <button class="btn-cancel" onclick="revenirAuMenu()">Annuler</button>
-            </div>
-
-            <div id="ecran-historique" style="display:none;">
-                <h3>Historique des visites</h3>
-                <div id="liste-historique-complete" style="max-height:300px; overflow-y:auto; background:#111; border-radius:8px;"></div>
-                <button class="btn-cancel" style="margin-top:10px;" onclick="revenirAuMenu()">Retour</button>
-            </div>
-
-            <div id="ecran-elevage" style="display:none;">
-                <h3 style="color:#8e44ad;">Calendrier d'Élevage</h3>
-                <div id="info-elevage-vide">
-                    <p style="text-align:center; padding:10px; color:#bbb;">Aucun cycle d'élevage en cours sur cette colonie.</p>
-                    <button class="btn-save" style="background:#8e44ad;" onclick="demarrerCycle()">Démarrer un cycle (J0)</button>
-                </div>
-                <div id="calendrier-actif" style="display:none;">
-                    <div id="liste-dates-elevage" style="background:#111; border-radius:8px; margin-bottom:15px;"></div>
-                    <button class="btn-cancel" style="background:#c0392b; margin-bottom:10px;" onclick="stopperCycle()">Arrêter le cycle</button>
-                </div>
-                <button class="btn-cancel" onclick="revenirAuMenu()">Retour</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-edit-rang" class="modal">
-        <div class="modal-content">
-            <h3>Paramètres du Rang</h3>
-            <label>Nom :</label>
-            <input type="text" id="edit-nom-rang">
-            <label>Couleur :</label>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <input type="color" id="edit-couleur-rang">
-            </div>
-            <button onclick="validerEditRang()" class="btn-save">Appliquer</button>
-            <button onclick="supprimerRangActuel()" class="btn-cancel" style="background:#e74c3c;">🗑️ Supprimer le Rang</button>
-            <button onclick="fermerModalEditRang()" class="btn-cancel">Fermer</button>
-        </div>
-    </div>
-
-    <div id="modal-rang" class="modal">
-        <div class="modal-content">
-            <h3>Nouveau Rang</h3>
-            <input type="text" id="nom-rang-input" placeholder="Nom (ex: Ligne Nord)">
-            <select id="orientation-rang-input">
-                <option value="column">Vertical (Colonne)</option>
-                <option value="row">Horizontal (Ligne)</option>
+        <div id="ecran-formulaire" style="display:none">
+            <h3>Nouvelle Visite</h3>
+            <select id="note-ruche">
+                <option value="S">S - Très Forte</option>
+                <option value="A">A - Normale</option>
+                <option value="B">B - Faible</option>
+                <option value="C">C - À Surveiller</option>
             </select>
-            <button onclick="creerRang()" class="btn-save">Créer</button>
-            <button onclick="fermerModalRang()" class="btn-cancel">Annuler</button>
+            <input type="number" id="cadre-couvain" placeholder="Nb cadres couvain">
+            <input type="number" id="cadre-reserve" placeholder="Nb cadres réserves">
+            <textarea id="notes-visite" placeholder="Observations..."></textarea>
+            <button class="btn-save" onclick="sauvegarderVisite()">Valider</button>
+            <button class="btn-cancel" onclick="revenirAuMenu()">Retour</button>
+        </div>
+
+        <div id="ecran-historique" style="display:none">
+            <h3>Historique</h3>
+            <div id="liste-historique"></div>
+            <button class="btn-cancel" onclick="revenirAuMenu()">Retour</button>
+        </div>
+
+        <div id="ecran-elevage" style="display:none">
+            <h3>Élevage de Reine</h3>
+            <div id="info-elevage-vide">
+                <p>Aucun cycle en cours.</p>
+                <button class="btn-save" onclick="demarrerCycle()">Lancer un cycle (J0)</button>
+            </div>
+            <div id="calendrier-actif" style="display:none">
+                <div id="liste-dates-elevage"></div>
+                <button class="btn-cancel" style="background:var(--danger)!important" onclick="stopperCycle()">Arrêter l'élevage</button>
+            </div>
+            <button class="btn-cancel" onclick="revenirAuMenu()">Retour</button>
         </div>
     </div>
+</div>
 
-    <div id="modal-type" class="modal">
-        <div class="modal-content">
-            <h3>Ajouter à quel rang ?</h3>
-            <select id="select-rang-destination" style="margin-bottom: 15px; padding: 10px;"></select>
-            
-            <h3>Type de colonie ?</h3>
-            <button onclick="validerType('RUCHE')" class="btn-save">RUCHE</button>
-            <button onclick="validerType('RUCHETTE')" class="btn-save" style="background:#2980b9;">RUCHETTE</button>
-            <button onclick="fermerModalType()" class="btn-cancel">Annuler</button>
-        </div>
+<div id="modal-rang" class="modal">
+    <div class="modal-content">
+        <h3>Nouveau Bloc</h3>
+        <input type="text" id="nom-rang-input" placeholder="Nom du bloc (ex: Rang A)">
+        <select id="orientation-rang-input">
+            <option value="row">Horizontal</option>
+            <option value="column">Vertical</option>
+        </select>
+        <button class="btn-save" onclick="creerRang()">Créer</button>
+        <button class="btn-cancel" onclick="fermerModal()">Annuler</button>
     </div>
+</div>
 
-    <script src="sortable.js"></script>
-    <script src="app.js"></script>
+<div id="modal-edit-rang" class="modal">
+    <div class="modal-content">
+        <h3>Modifier le Bloc</h3>
+        <input type="text" id="edit-nom-rang">
+        <input type="color" id="edit-couleur-rang" style="height:50px">
+        <button class="btn-save" onclick="validerEditRang()">Enregistrer</button>
+        <button class="btn-cancel" style="background:var(--danger)!important" onclick="supprimerRangActuel()">Supprimer le bloc</button>
+        <button class="btn-cancel" onclick="fermerModal()">Annuler</button>
+    </div>
+</div>
+
+<div id="modal-type" class="modal">
+    <div class="modal-content">
+        <h3>Type & Destination</h3>
+        <select id="select-rang-destination"></select>
+        <button class="btn-save" onclick="validerType('RUCHE')">RUCHE</button>
+        <button class="btn-save" style="background:var(--orange)!important" onclick="validerType('RUCHETTE')">RUCHETTE</button>
+        <button class="btn-cancel" onclick="fermerModal()">Annuler</button>
+    </div>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
